@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python HTTP Snake Game</title>
+    <style>
+        body { background: #121212; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; margin-top: 40px; }
+        #game-container { position: relative; margin-top: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.5); border: 2px solid #333;}
+        canvas { background: #1e1e1e; display: block; }
+        .ui-bar { display: flex; justify-content: space-between; width: 400px; font-size: 18px; font-weight: bold; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; display: none; }
+        #overlay h1 { margin: 0 0 20px 0; font-size: 36px; text-shadow: 2px 2px 4px #000; }
+        button { background: #32CD32; color: #121212; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: 0.2s; }
+        button:hover { background: #3cb371; }
+    </style>
+</head>
+<body>
+
+    <div class="ui-bar">
+        <span>Score: <span id="score">0</span></span>
+        <span>High Score: <span id="high-score">0</span></span>
+    </div>
+
+    <div id="game-container">
+        <canvas id="board" width="400" height="400"></canvas>
+        <div id="overlay">
+            <h1 id="overlay-text">Game Over</h1>
+            <button onclick="startGame()">Restart Game</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d');
+        const CELL_SIZE = 20;
+
+        let inputQueue = [];
+        let isGameOver = false;
+        let activeTick = false;
+        
+        let highScore = localStorage.getItem('pySnakeHighScore') || 0;
+        document.getElementById('high-score').innerText = highScore;
+
+        // Ensure we capture rapid sequences
+        const keyMap = {
+            'ArrowUp': 'UP', 'w': 'UP', 'W': 'UP',
+            'ArrowDown': 'DOWN', 's': 'DOWN', 'S': 'DOWN',
+            'ArrowLeft': 'LEFT', 'a': 'LEFT', 'A': 'LEFT',
+            'ArrowRight': 'RIGHT', 'd': 'RIGHT', 'D': 'RIGHT'
+        };
+
+        window.addEventListener('keydown', (e) => {
+            const dir = keyMap[e.key];
+            if (dir && !isGameOver) {
+                e.preventDefault();
+                inputQueue.push(dir);
+            }
+        });
+
+        async function startGame() {
+            document.getElementById('overlay').style.display = 'none';
+            isGameOver = false;
+            inputQueue = [];
+            
+            const response = await fetch('/start', { method: 'POST' });
+            const state = await response.json();
+            
+            render(state);
+            setTimeout(gameLoop, 120); // 120ms tick rate
+        }
+
+        async function gameLoop() {
+            if (isGameOver) return;
+            
+            // Pop the oldest input direction from our queue
+            const dir = inputQueue.shift() || null;
+            
+            try {
+                const response = await fetch('/tick', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ direction: dir })
+                });
+                
+                const state = await response.json();
+                render(state);
+                
+                if (state.game_over) {
+                    isGameOver = true;
+                    showGameOver(state);
+                    return; // Break the recursive setTimeout loop cleanly
+                }
+            } catch (err) {
+                console.error("Connection lost:", err);
+            }
+            
+            setTimeout(gameLoop, 120);
+        }
+
+        function render(state) {
+            // Clear board
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Food
+            if (state.food) {
+                ctx.fillStyle = '#ff4757'; // Red
+                ctx.fillRect(state.food[0] * CELL_SIZE, state.food[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+
+            // Draw Snake
+            state.snake.forEach((segment, index) => {
+                ctx.fillStyle = index === 0 ? '#2ed573' : '#7bed9f'; // Head slightly distinct
+                ctx.fillRect(segment[0] * CELL_SIZE, segment[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                ctx.strokeStyle = '#2f3542';
+                ctx.strokeRect(segment[0] * CELL_SIZE, segment[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            });
+
+            // Update UI
+            document.getElementById('score').innerText = state.score;
+            if (state.score > highScore) {
+                highScore = state.score;
+                localStorage.setItem('pySnakeHighScore', highScore);
+                document.getElementById('high-score').innerText = highScore;
+            }
+        }
+
+        function showGameOver(state) {
+            const overlay = document.getElementById('overlay');
+            const overlayText = document.getElementById('overlay-text');
+            overlayText.innerText = state.win ? "Perfect Game! You Win!" : "Game Over";
+            overlayText.style.color = state.win ? "#FFD700" : "#ff4757";
+            overlay.style.display = 'flex';
+        }
+
+        // Initialize empty board visuals
+        ctx.fillStyle = '#1e1e1e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('overlay').style.display = 'flex';
+        document.getElementById('overlay-text').innerText = "Python HTTP Snake";
+        document.querySelector('#overlay button').innerText = "Start Game";
+    </script>
+</body>
+</html>
