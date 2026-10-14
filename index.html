@@ -3,30 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Python HTTP Snake Game</title>
+    <title>Python Snake - AI Auto-Pilot</title>
     <style>
         body { background: #121212; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; margin-top: 40px; }
-        #game-container { position: relative; margin-top: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.5); border: 2px solid #333;}
+        .main-layout { display: flex; gap: 40px; align-items: flex-start; margin-top: 20px;}
+        
+        #game-container { position: relative; box-shadow: 0 0 25px rgba(46, 213, 115, 0.2); border: 2px solid #333; border-radius: 8px; overflow: hidden;}
         canvas { background: #1e1e1e; display: block; }
-        .ui-bar { display: flex; justify-content: space-between; width: 400px; font-size: 18px; font-weight: bold; }
-        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; display: none; }
-        #overlay h1 { margin: 0 0 20px 0; font-size: 36px; text-shadow: 2px 2px 4px #000; }
+        
+        .ui-bar { display: flex; justify-content: space-between; align-items: center; width: 400px; font-size: 18px; font-weight: bold; margin-bottom: 10px;}
+        .legend { display: flex; justify-content: space-between; width: 400px; font-size: 14px; color: #aaa; margin-top: 15px; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .box { width: 15px; height: 15px; border-radius: 50%; } /* Changed legend to circles */
+        
+        #leaderboard-panel { background: #1e1e1e; padding: 20px; border: 2px solid #333; border-radius: 8px; width: 250px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        #leaderboard-panel h2 { margin-top: 0; color: #32CD32; text-align: center; font-size: 22px; margin-bottom: 20px;}
+        .score-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333; font-size: 16px;}
+        .score-row:nth-child(1) { color: #FFD700; font-weight: bold; font-size: 18px;} 
+        .score-row:nth-child(2) { color: #C0C0C0; font-weight: bold; } 
+        .score-row:nth-child(3) { color: #cd7f32; font-weight: bold; } 
+        
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; display: none; }
+        #overlay h1 { margin: 0 0 10px 0; font-size: 36px; text-shadow: 2px 2px 4px #000; }
+        #final-score { font-size: 24px; margin-bottom: 20px; color: #aaa; }
+        
+        input[type="text"] { padding: 10px; font-size: 16px; border-radius: 4px; border: none; outline: none; margin-bottom: 15px; text-align: center; width: 200px; background: #2f3542; color: #fff;}
+        .button-group { display: flex; gap: 10px; }
         button { background: #32CD32; color: #121212; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: 0.2s; }
         button:hover { background: #3cb371; }
+        button.secondary { background: #576574; color: white;}
+        button.secondary:hover { background: #8395a7;}
+        
+        /* New AI Toggle Button Style */
+        #ai-btn { background: #3742fa; color: white; padding: 5px 15px; font-size: 14px; border-radius: 20px; }
+        #ai-btn.active { background: #ff4757; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
     </style>
 </head>
 <body>
 
     <div class="ui-bar">
         <span>Score: <span id="score">0</span></span>
-        <span>High Score: <span id="high-score">0</span></span>
+        <button id="ai-btn" onclick="toggleAI()">🤖 Auto-Pilot: OFF</button>
     </div>
 
-    <div id="game-container">
-        <canvas id="board" width="400" height="400"></canvas>
-        <div id="overlay">
-            <h1 id="overlay-text">Game Over</h1>
-            <button onclick="startGame()">Restart Game</button>
+    <div class="main-layout">
+        <div>
+            <div id="game-container">
+                <canvas id="board" width="400" height="400"></canvas>
+                <div id="overlay">
+                    <h1 id="overlay-text">Game Over</h1>
+                    <div id="final-score">Score: 0</div>
+                    <input type="text" id="player-name" placeholder="Enter your name" maxlength="10">
+                    <div class="button-group">
+                        <button id="submit-btn" onclick="submitScore()">Submit Score</button>
+                        <button class="secondary" onclick="startGame()">Play Again</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item"><div class="box" style="background: #ff4757;"></div> Normal</div>
+                <div class="legend-item"><div class="box" style="background: #ffd32a;"></div> Fast</div>
+                <div class="legend-item"><div class="box" style="background: #0abde3;"></div> Slow</div>
+            </div>
+        </div>
+
+        <div id="leaderboard-panel">
+            <h2>Global Top 10</h2>
+            <div id="leaderboard-list">
+                <div style="text-align:center; color:#555;">Loading...</div>
+            </div>
         </div>
     </div>
 
@@ -37,12 +84,12 @@
 
         let inputQueue = [];
         let isGameOver = false;
-        let activeTick = false;
+        let currentScore = 0;
+        let currentState = null;
         
-        let highScore = localStorage.getItem('pySnakeHighScore') || 0;
-        document.getElementById('high-score').innerText = highScore;
+        // AI State
+        let aiEnabled = false;
 
-        // Ensure we capture rapid sequences
         const keyMap = {
             'ArrowUp': 'UP', 'w': 'UP', 'W': 'UP',
             'ArrowDown': 'DOWN', 's': 'DOWN', 'S': 'DOWN',
@@ -54,27 +101,155 @@
             const dir = keyMap[e.key];
             if (dir && !isGameOver) {
                 e.preventDefault();
+                // HUMAN OVERRIDE: If AI is driving, hitting a key instantly turns it off
+                if (aiEnabled) {
+                    toggleAI();
+                }
                 inputQueue.push(dir);
             }
         });
 
+        fetchLeaderboard();
+
+        function toggleAI() {
+            aiEnabled = !aiEnabled;
+            const btn = document.getElementById('ai-btn');
+            if (aiEnabled) {
+                btn.innerText = "🤖 Auto-Pilot: ON";
+                btn.classList.add('active');
+            } else {
+                btn.innerText = "🤖 Auto-Pilot: OFF";
+                btn.classList.remove('active');
+                inputQueue = []; // Clear queue so the human doesn't suffer the AI's buffered moves
+            }
+        }
+
+        // --- THE AI BRAIN (Breadth-First Search) ---
+        function calculateAIMove(state) {
+            if (!state.food) return null;
+            
+            const head = state.snake[0];
+            const target = state.food.pos;
+            const bodySet = new Set(state.snake.slice(0, -1).map(p => `${p[0]},${p[1]}`));
+            
+            const queue = [ { pos: head, path: [] } ];
+            const visited = new Set([`${head[0]},${head[1]}`]);
+
+            const dirs = [
+                { d: 'UP', dx: 0, dy: -1 }, { d: 'DOWN', dx: 0, dy: 1 },
+                { d: 'LEFT', dx: -1, dy: 0 }, { d: 'RIGHT', dx: 1, dy: 0 }
+            ];
+
+            // 1. Search for shortest path to food
+            while (queue.length > 0) {
+                const current = queue.shift();
+                
+                // Found the food! Return the first move we need to make
+                if (current.pos[0] === target[0] && current.pos[1] === target[1]) {
+                    return current.path[0]; 
+                }
+
+                for (let dir of dirs) {
+                    const nx = current.pos[0] + dir.dx;
+                    const ny = current.pos[1] + dir.dy;
+                    const key = `${nx},${ny}`;
+
+                    // Check bounds and body collision
+                    if (nx >= 0 && nx < state.width && ny >= 0 && ny < state.height) {
+                        if (!bodySet.has(key) && !visited.has(key)) {
+                            visited.add(key);
+                            queue.push({ pos: [nx, ny], path: [...current.path, dir.d] });
+                        }
+                    }
+                }
+            }
+
+            // 2. FALLBACK (Survival Mode): If food is blocked, just make any safe move
+            for (let dir of dirs) {
+                const nx = head[0] + dir.dx;
+                const ny = head[1] + dir.dy;
+                if (nx >= 0 && nx < state.width && ny >= 0 && ny < state.height && !bodySet.has(`${nx},${ny}`)) {
+                    const opposites = { 'UP': 'DOWN', 'DOWN': 'UP', 'LEFT': 'RIGHT', 'RIGHT': 'LEFT' };
+                    // Don't turn back on ourselves
+                    if (opposites[dir.d] !== state.last_moved_direction) {
+                        return dir.d;
+                    }
+                }
+            }
+            
+            return null; // AI accepts its fate
+        }
+        // ------------------------------------------
+
+        async function fetchLeaderboard() {
+            try {
+                const response = await fetch('/leaderboard');
+                const scores = await response.json();
+                updateLeaderboardUI(scores);
+            } catch (err) { console.error("Failed to load leaderboard"); }
+        }
+
+        function updateLeaderboardUI(scores) {
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = '';
+            if (scores.length === 0) {
+                list.innerHTML = '<div style="text-align:center; color:#555;">No scores yet!</div>';
+                return;
+            }
+            scores.forEach(entry => {
+                const row = document.createElement('div');
+                row.className = 'score-row';
+                row.innerHTML = `<span>${escapeHTML(entry.name)}</span> <span>${entry.score}</span>`;
+                list.appendChild(row);
+            });
+        }
+
+        async function submitScore() {
+            const nameInput = document.getElementById('player-name');
+            const name = nameInput.value.trim() || "Anonymous";
+            try {
+                const response = await fetch('/submit_score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, score: currentScore })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    updateLeaderboardUI(data.leaderboard);
+                    document.getElementById('submit-btn').innerText = "Saved!";
+                    document.getElementById('submit-btn').disabled = true;
+                    document.getElementById('submit-btn').style.background = "#555";
+                }
+            } catch (err) {}
+        }
+
         async function startGame() {
             document.getElementById('overlay').style.display = 'none';
+            document.getElementById('submit-btn').innerText = "Submit Score";
+            document.getElementById('submit-btn').disabled = false;
+            document.getElementById('submit-btn').style.background = "#32CD32";
+            
             isGameOver = false;
             inputQueue = [];
             
             const response = await fetch('/start', { method: 'POST' });
-            const state = await response.json();
+            currentState = await response.json();
             
-            render(state);
-            setTimeout(gameLoop, 120); // 120ms tick rate
+            render(currentState);
+            setTimeout(gameLoop, currentState.tick_rate);
         }
 
         async function gameLoop() {
             if (isGameOver) return;
             
-            // Pop the oldest input direction from our queue
+            // If AI is enabled, generate the move and inject it
+            if (aiEnabled && currentState) {
+                const aiMove = calculateAIMove(currentState);
+                if (aiMove) inputQueue = [aiMove];
+            }
+            
             const dir = inputQueue.shift() || null;
+            let currentTickRate = 130; 
             
             try {
                 const response = await fetch('/tick', {
@@ -83,62 +258,119 @@
                     body: JSON.stringify({ direction: dir })
                 });
                 
-                const state = await response.json();
-                render(state);
+                currentState = await response.json();
+                render(currentState);
                 
-                if (state.game_over) {
+                if (currentState.game_over) {
                     isGameOver = true;
-                    showGameOver(state);
-                    return; // Break the recursive setTimeout loop cleanly
+                    showGameOver(currentState);
+                    return; 
                 }
-            } catch (err) {
-                console.error("Connection lost:", err);
-            }
+                currentTickRate = currentState.tick_rate;
+            } catch (err) {}
             
-            setTimeout(gameLoop, 120);
+            setTimeout(gameLoop, currentTickRate);
         }
 
+        // --- VISUAL OVERHAUL RENDERING ---
         function render(state) {
-            // Clear board
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Food
+            // 1. Draw Food (Like an Apple)
             if (state.food) {
-                ctx.fillStyle = '#ff4757'; // Red
-                ctx.fillRect(state.food[0] * CELL_SIZE, state.food[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                const fx = state.food.pos[0] * CELL_SIZE + CELL_SIZE/2;
+                const fy = state.food.pos[1] * CELL_SIZE + CELL_SIZE/2;
+                
+                // Colors based on type
+                if (state.food.type === 'normal') ctx.fillStyle = '#ff4757'; 
+                else if (state.food.type === 'fast') ctx.fillStyle = '#ffd32a'; 
+                else if (state.food.type === 'slow') ctx.fillStyle = '#0abde3'; 
+                
+                // Draw round fruit
+                ctx.beginPath();
+                ctx.arc(fx, fy, CELL_SIZE/2.2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw little green leaf
+                ctx.fillStyle = '#2ed573';
+                ctx.beginPath();
+                ctx.ellipse(fx + 3, fy - 6, 4, 2, Math.PI / 4, 0, Math.PI * 2);
+                ctx.fill();
             }
 
-            // Draw Snake
-            state.snake.forEach((segment, index) => {
-                ctx.fillStyle = index === 0 ? '#2ed573' : '#7bed9f'; // Head slightly distinct
-                ctx.fillRect(segment[0] * CELL_SIZE, segment[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                ctx.strokeStyle = '#2f3542';
-                ctx.strokeRect(segment[0] * CELL_SIZE, segment[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-            });
+            // 2. Draw Snake (Smooth continuous line)
+            if (state.snake.length > 0) {
+                ctx.beginPath();
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = CELL_SIZE * 0.85; // Thickness of the snake
+                ctx.strokeStyle = '#2ed573';      // Snake skin color
+                
+                state.snake.forEach((segment, index) => {
+                    const x = segment[0] * CELL_SIZE + CELL_SIZE/2;
+                    const y = segment[1] * CELL_SIZE + CELL_SIZE/2;
+                    if (index === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
 
-            // Update UI
-            document.getElementById('score').innerText = state.score;
-            if (state.score > highScore) {
-                highScore = state.score;
-                localStorage.setItem('pySnakeHighScore', highScore);
-                document.getElementById('high-score').innerText = highScore;
+                // 3. Draw Eyes on the Head
+                const head = state.snake[0];
+                const hx = head[0] * CELL_SIZE + CELL_SIZE/2;
+                const hy = head[1] * CELL_SIZE + CELL_SIZE/2;
+                const dir = state.last_moved_direction;
+                
+                let eye1Offsets = [0, 0], eye2Offsets = [0, 0];
+                // Position eyes based on where the snake is looking
+                if (dir === 'UP') { eye1Offsets = [-4, -4]; eye2Offsets = [4, -4]; }
+                else if (dir === 'DOWN') { eye1Offsets = [-4, 4]; eye2Offsets = [4, 4]; }
+                else if (dir === 'LEFT') { eye1Offsets = [-4, -4]; eye2Offsets = [-4, 4]; }
+                else if (dir === 'RIGHT') { eye1Offsets = [4, -4]; eye2Offsets = [4, 4]; }
+
+                // Draw Whites of eyes
+                ctx.fillStyle = 'white';
+                ctx.beginPath(); ctx.arc(hx + eye1Offsets[0], hy + eye1Offsets[1], 3, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(hx + eye2Offsets[0], hy + eye2Offsets[1], 3, 0, Math.PI*2); ctx.fill();
+                
+                // Draw Pupils
+                ctx.fillStyle = 'black';
+                ctx.beginPath(); ctx.arc(hx + eye1Offsets[0], hy + eye1Offsets[1], 1.5, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(hx + eye2Offsets[0], hy + eye2Offsets[1], 1.5, 0, Math.PI*2); ctx.fill();
             }
+
+            currentScore = state.score;
+            document.getElementById('score').innerText = currentScore;
         }
+        // ---------------------------------
 
         function showGameOver(state) {
             const overlay = document.getElementById('overlay');
             const overlayText = document.getElementById('overlay-text');
-            overlayText.innerText = state.win ? "Perfect Game! You Win!" : "Game Over";
+            overlayText.innerText = state.win ? "Perfect Game!" : "Game Over";
             overlayText.style.color = state.win ? "#FFD700" : "#ff4757";
+            document.getElementById('final-score').innerText = `Final Score: ${currentScore}`;
+            
+            const canSubmit = currentScore > 0;
+            document.getElementById('player-name').style.display = canSubmit ? 'block' : 'none';
+            document.getElementById('submit-btn').style.display = canSubmit ? 'block' : 'none';
             overlay.style.display = 'flex';
+            
+            // Turn off AI if we crash
+            if (aiEnabled) toggleAI();
         }
 
-        // Initialize empty board visuals
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag]));
+        }
+
         ctx.fillStyle = '#1e1e1e';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         document.getElementById('overlay').style.display = 'flex';
         document.getElementById('overlay-text').innerText = "Python HTTP Snake";
-        document.querySelector('#overlay button').innerText = "Start Game";
+        document.getElementById('final-score').innerText = "Get ready!";
+        document.getElementById('player-name').style.display = 'none';
+        document.getElementById('submit-btn').style.display = 'none';
+        document.querySelector('#overlay button.secondary').innerText = "Start Game";
     </script>
 </body>
 </html>
